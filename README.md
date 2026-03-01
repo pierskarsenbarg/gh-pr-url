@@ -18,7 +18,7 @@ To get the URL, run the following: `gh pr-url`:
 
 ```console
 ❯ gh pr-url
-https://github.com/pierskarsenbarg/gh-pr-url
+https://github.com/pierskarsenbarg/gh-pr-url/pulls/42
 ```
 
 For all options, including shortened flags:
