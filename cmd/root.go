@@ -2,13 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/go-git/go-git/v6"
-	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/google/go-github/v42/github"
 	"github.com/spf13/cobra"
 )
@@ -22,22 +20,22 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		localRepo, err := git.PlainOpen(currentDir)
 
-		branches, err := localRepo.Branches()
+		localRepo, err := git.PlainOpenWithOptions(currentDir, &git.PlainOpenOptions{DetectDotGit: true})
 		if err != nil {
-			return err
-		}
-
-		_, err = branches.Next()
-		if err != nil {
-			return fmt.Errorf("No branches in repository")
+			return fmt.Errorf("not a git repository: %w", err)
 		}
 
 		headRef, err := localRepo.Head()
 		if err != nil {
-			return err
+			return fmt.Errorf("could not read HEAD: %w", err)
 		}
+
+		if !headRef.Name().IsBranch() {
+			return fmt.Errorf("HEAD is detached — checkout a branch first")
+		}
+
+		currentBranchName := headRef.Name().Short()
 
 		repo, err := repository.Current()
 		if err != nil {
@@ -56,24 +54,14 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		if headRef.Name().Short() == *restRepo.DefaultBranch {
-			return err
+		if restRepo.DefaultBranch == nil {
+			return fmt.Errorf("could not determine the default branch for this repository")
 		}
 
-		var currentBranchName string
-		err = branches.ForEach(func(branchRef *plumbing.Reference) error {
-			if branchRef.Hash() == headRef.Hash() {
-				currentBranchName = branchRef.Name().Short()
-				return nil
-			}
-
+		if currentBranchName == *restRepo.DefaultBranch {
+			fmt.Println("You are on the default branch — there is no PR URL to show.")
 			return nil
-		})
-		if err != nil {
-			return err
 		}
-
-		slog.Info(fmt.Sprintf("Current branch: %s", currentBranchName))
 
 		var pulls []github.PullRequest
 
@@ -83,19 +71,20 @@ var rootCmd = &cobra.Command{
 		}
 
 		if len(pulls) == 0 {
-			fmt.Printf("No Pull requests for this branch: %s", repo.Name)
+			fmt.Printf("No pull requests for branch: %s\n", currentBranchName)
+			return nil
 		}
 
-		if len(pulls) == 1 {
-			fmt.Print(*pulls[0].HTMLURL)
+		for _, pr := range pulls {
+			if pr.HTMLURL != nil {
+				fmt.Println(*pr.HTMLURL)
+			}
 		}
 
 		return nil
 	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
