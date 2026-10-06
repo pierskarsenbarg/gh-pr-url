@@ -3,7 +3,7 @@ module github.com/pierskarsenbarg/gh-pr-url
 go 1.25.5
 
 require (
-	github.com/cli/go-gh/v2 v2.16.0
+	github.com/cli/go-gh/v2 v2.16.1
 	github.com/go-git/go-git/v6 v6.0.0-alpha.5
 	github.com/google/go-github/v42 v42.0.0
 	github.com/spf13/cobra v1.10.2
